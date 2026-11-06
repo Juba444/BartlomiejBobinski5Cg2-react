@@ -1,9 +1,9 @@
-import { useState } from "react";
 import Header from "./components/Header";
 import Menu from "./components/Menu";
 import UserCard from "./components/UserCard";
 import Footer from "./components/Footer";
 import ProductList from "./views/productList";
+import { useState, useEffect } from "react";
 import "./App.css";
 import {
     getProducts,
@@ -14,6 +14,51 @@ import {
     getProductsOverPrice,
     getProductExactPrice,
 } from "./controllers/productController";
+// Zapis koszyka do ciasteczka
+function saveCart(cart) {
+    document.cookie = `cart=${encodeURIComponent(JSON.stringify(cart))}; max-age=${60 * 60 * 24 * 7}; path=/; SameSite=Lax`;
+}
+
+// Odczyt koszyka z ciasteczka
+function loadCart() {
+    const cookies = document.cookie.split("; ");
+
+    const cartCookie = cookies.find(cookie =>
+        cookie.startsWith("cart=")
+    );
+
+    if (!cartCookie) {
+        return [];
+    }
+
+    try {
+        return JSON.parse(
+            decodeURIComponent(cartCookie.substring(5))
+        );
+    } catch {
+        return [];
+    }
+}
+function getCookie(name) {
+    const cookies = document.cookie.split("; ");
+
+    const cookie = cookies.find(item =>
+        item.startsWith(name + "=")
+    );
+
+    if (!cookie) return null;
+
+    return decodeURIComponent(cookie.substring(name.length + 1));
+}
+function deleteCookie(name) {
+    document.cookie = `${name}=; max-age=0; path=/; SameSite=Lax`;
+}
+function saveUser(username) {
+    document.cookie = `user=${encodeURIComponent(username)}; path=/; SameSite=Lax`;
+}
+function loadUser() {
+    return getCookie("user");
+}
 
 const products = getProducts();
 const drinks = getProductByCategory("Napoje");
@@ -23,12 +68,16 @@ const users = [
     {
         name: "Jan Kowalski",
         age: 19,
-        city: "Warszawa"
+        city: "Warszawa",
+        username: "admin",
+        password: "admin123"
     },
     {
         name: "Anna Nowak",
         age: 19,
-        city: "Radzymin"
+        city: "Radzymin",
+        username: "Anna",
+        password: "AnkaTop"
     },
 ];
 
@@ -46,13 +95,20 @@ function App() {
     const [category, setCategory] = useState("Wszystkie");
     const [filterType, setFilterType] = useState("wszystkie");
     const [priceInput, setPriceInput] = useState("");
-    const [cartItems, setCartItems] = useState([]);
+    const [cartItems, setCartItems] = useState(loadCart);
     const [activePage, setActivePage] = useState("Lista");
 
     const categories = ["Wszystkie", ...new Set(products.map(p => p.category))];
 
     const needsPriceInput = ["underPrice", "overPrice", "exactPrice"].includes(filterType);
     const priceValue = parseFloat(priceInput);
+
+
+    useEffect(() => {
+        if (currentUser) {
+            saveCart(cartItems);
+        }
+    }, [cartItems, currentUser]);
 
     function getBaseProducts() {
         switch (filterType) {
